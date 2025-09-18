@@ -8,6 +8,7 @@ yarn-error.log*
 .env
 .env.local
 .env.production
+.env.development
 
 # 日志
 logs/
@@ -26,6 +27,10 @@ coverage/
 dist/
 build/
 
+# 上传文件
+uploads/
+public/uploads/
+
 # 系统文件
 .DS_Store
 Thumbs.db
@@ -36,5 +41,13 @@ Thumbs.db
 *.swp
 *.swo
 
-# 上传文件（如果需要）
-uploads/
+# 操作系统文件
+ehthumbs.db
+
+# 备份文件
+*.backup
+*.bak
+
+# 临时文件
+*.tmp
+*.temp
