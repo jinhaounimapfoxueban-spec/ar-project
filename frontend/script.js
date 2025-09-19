@@ -1,5 +1,7 @@
 // API基础URL - 部署后需要更新为Railway后端地址
-const API_BASE_URL = 'https://your-backend.up.railway.app';
+const API_BASE_URL = window.location.hostname === 'localhost' ? 
+    'http://localhost:5000' : 
+    'https://your-backend.up.railway.app';
 
 // 模拟数据存储（在没有后端时使用）
 let projects = JSON.parse(localStorage.getItem('arProjects')) || [];
@@ -7,393 +9,240 @@ let currentOriginalImage = null;
 let currentAIImage = null;
 
 // DOM元素
-const loginBtn = document.getElementById('loginBtn');
-const loginModal = document.getElementById('loginModal');
-const adminPanel = document.getElementById('adminPanel');
-const createProjectBtn = document.getElementById('createProjectBtn');
-const createProjectModal = document.getElementById('createProjectModal');
-const helpModal = document.getElementById('helpModal');
-const helpBtn = document.getElementById('helpBtn');
-const closeModalButtons = document.querySelectorAll('.close-modal');
-const submitLogin = document.getElementById('submitLogin');
-const projectsGrid = document.getElementById('projectsGrid');
-const startCameraBtn = document.getElementById('startCameraBtn');
-const projectImage = document.getElementById('projectImage');
-const imagePreview = document.getElementById('imagePreview');
-const regenerateImageBtn = document.getElementById('regenerateImageBtn');
-const generateVideoBtn = document.getElementById('generateVideoBtn');
-const regenerateVideoBtn = document.getElementById('regenerateVideoBtn');
-const saveProjectBtn = document.getElementById('saveProjectBtn');
-const videoPreview = document.getElementById('videoPreview');
+const startCameraBtn = document.getElementById('start-camera');
+const createProjectBtn = document.getElementById('create-project');
+const helpBtn = document.getElementById('help-btn');
+const cameraPreview = document.getElementById('camera-preview');
+const projectsContainer = document.getElementById('projects-container');
 
 // 初始化
-document.addEventListener('DOMContentLoaded', () => {
+document.addEventListener('DOMContentLoaded', function() {
+    setupMobileControls();
+    setupModal();
+    setupCamera();
     renderProjects();
-    checkLoginStatus();
-});
-
-// 检查登录状态
-function checkLoginStatus() {
-    const token = localStorage.getItem('authToken');
-    if (token) {
-        adminPanel.style.display = 'block';
-    }
-}
-
-// 显示通知
-function showNotification(message, type = 'success') {
-    const notification = document.createElement('div');
-    notification.className = `notification ${type}`;
-    notification.textContent = message;
-    document.body.appendChild(notification);
+    checkDeviceAndEnvironment();
     
-    setTimeout(() => {
-        notification.remove();
-    }, 3000);
-}
-
-// 打开登录模态框
-loginBtn.addEventListener('click', () => {
-    loginModal.style.display = 'flex';
-});
-
-// 打开帮助模态框
-helpBtn.addEventListener('click', () => {
-    helpModal.style.display = 'flex';
-});
-
-// 关闭模态框
-closeModalButtons.forEach(button => {
-    button.addEventListener('click', () => {
-        loginModal.style.display = 'none';
-        createProjectModal.style.display = 'none';
-        helpModal.style.display = 'none';
-    });
-});
-
-// 点击模态框外部关闭
-window.addEventListener('click', (e) => {
-    if (e.target === loginModal) loginModal.style.display = 'none';
-    if (e.target === createProjectModal) createProjectModal.style.display = 'none';
-    if (e.target === helpModal) helpModal.style.display = 'none';
-});
-
-// 提交登录
-submitLogin.addEventListener('click', async () => {
-    const username = document.getElementById('username').value;
-    const password = document.getElementById('password').value;
-    
-    if (!username || !password) {
-        showNotification('请输入用户名和密码', 'error');
-        return;
-    }
-    
-    try {
-        // 尝试使用后端API登录
-        const success = await login(username, password);
-        if (success) {
-            showNotification('登入成功！');
-            loginModal.style.display = 'none';
-            adminPanel.style.display = 'block';
-            loadProjectsFromAPI();
-        } else {
-            // 后端失败时使用模拟登录
-            simulateLogin(username, password);
-        }
-    } catch (error) {
-        // 网络错误时使用模拟登录
-        simulateLogin(username, password);
+    // 检测移动设备
+    if ('ontouchstart' in window || navigator.maxTouchPoints > 0) {
+        document.body.classList.add('is-mobile');
     }
 });
 
-// 实际API登录
-async function login(username, password) {
-    try {
-        const response = await fetch(`${API_BASE_URL}/api/login`, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify({ username, password })
+// 添加触摸事件支持
+function setupMobileControls() {
+    const buttons = document.querySelectorAll('button');
+    
+    buttons.forEach(button => {
+        // 防止移动端触摸时出现蓝色高亮
+        button.style.webkitTapHighlightColor = 'transparent';
+        
+        // 触摸开始事件
+        button.addEventListener('touchstart', function(e) {
+            e.preventDefault();
+            this.style.transform = 'scale(0.95)';
+            this.style.opacity = '0.8';
         });
         
-        if (!response.ok) return false;
-        
-        const data = await response.json();
-        if (data.success && data.token) {
-            localStorage.setItem('authToken', data.token);
-            return true;
-        }
-        return false;
-    } catch (error) {
-        console.error('API登录错误:', error);
-        return false;
-    }
-}
-
-// 模拟登录（后端不可用时使用）
-function simulateLogin(username, password) {
-    if (username === 'admin2025' && password === 'Tjh244466666') {
-        showNotification('登入成功！（模拟模式）');
-        loginModal.style.display = 'none';
-        adminPanel.style.display = 'block';
-    } else {
-        showNotification('用户名或密码错误！', 'error');
-    }
-}
-
-// 从API加载项目
-async function loadProjectsFromAPI() {
-    try {
-        const token = localStorage.getItem('authToken');
-        const response = await fetch(`${API_BASE_URL}/api/projects`, {
-            headers: {
-                'Authorization': `Bearer ${token}`
-            }
-        });
-        
-        if (response.ok) {
-            const data = await response.json();
-            if (data.success) {
-                projects = data.projects;
-                renderProjects();
-            }
-        }
-    } catch (error) {
-        console.error('加载项目错误:', error);
-        // 失败时使用本地存储的项目
-        projects = JSON.parse(localStorage.getItem('arProjects')) || [];
-    }
-}
-
-// 打开创建项目模态框
-createProjectBtn.addEventListener('click', () => {
-    createProjectModal.style.display = 'flex';
-    // 重置表单
-    document.getElementById('projectName').value = '';
-    imagePreview.innerHTML = '<p>图片预览区域</p>';
-    videoPreview.innerHTML = '<p>视频预览区域</p>';
-    currentOriginalImage = null;
-    currentAIImage = null;
-});
-
-// 开启相机
-startCameraBtn.addEventListener('click', () => {
-    if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
-        navigator.mediaDevices.getUserMedia({ video: true })
-            .then(function(stream) {
-                const cameraFrame = document.querySelector('.camera-frame');
-                cameraFrame.innerHTML = '';
-                
-                const video = document.createElement('video');
-                video.srcObject = stream;
-                video.autoplay = true;
-                video.playsInline = true;
-                
-                cameraFrame.appendChild(video);
-                startCameraBtn.textContent = '关闭相机';
-                startCameraBtn.onclick = () => {
-                    stream.getTracks().forEach(track => track.stop());
-                    resetCameraView();
-                };
-            })
-            .catch(function(error) {
-                showNotification('无法访问相机: ' + error.message, 'error');
-            });
-    } else {
-        showNotification('您的浏览器不支持相机功能', 'error');
-    }
-});
-
-function resetCameraView() {
-    const cameraFrame = document.querySelector('.camera-frame');
-    cameraFrame.innerHTML = '<div class="camera-placeholder"><i class="fas fa-camera"></i></div><div class="scan-line"></div>';
-    startCameraBtn.textContent = '开启相机';
-    startCameraBtn.onclick = () => {
-        document.getElementById('startCameraBtn').click();
-    };
-}
-
-// 图片上传预览
-projectImage.addEventListener('change', function(e) {
-    const file = e.target.files[0];
-    if (file) {
-        const reader = new FileReader();
-        reader.onload = function(event) {
-            currentOriginalImage = event.target.result;
-            imagePreview.innerHTML = `<img src="${currentOriginalImage}" alt="上传的图片" style="max-width:100%; max-height:100%;">`;
+        // 触摸结束事件
+        button.addEventListener('touchend', function(e) {
+            e.preventDefault();
+            this.style.transform = 'scale(1)';
+            this.style.opacity = '1';
             
-            // 模拟AI图像生成
-            setTimeout(() => {
-                generateAIImage(currentOriginalImage);
-            }, 1000);
-        };
-        reader.readAsDataURL(file);
-    }
-});
-
-// 生成AI图像（模拟）
-function generateAIImage(originalImage) {
-    // 创建画布处理图像
-    const img = new Image();
-    img.src = originalImage;
-    img.onload = function() {
-        const canvas = document.createElement('canvas');
-        const ctx = canvas.getContext('2d');
-        canvas.width = img.width;
-        canvas.height = img.height;
+            // 模拟点击事件
+            this.click();
+        });
         
-        // 绘制原图
-        ctx.drawImage(img, 0, 0);
-        
-        // 应用一些滤镜模拟AI增强效果
-        const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
-        const data = imageData.data;
-        
-        for (let i = 0; i < data.length; i += 4) {
-            // 增加对比度
-            data[i] = data[i] < 128 ? data[i] * 0.9 : Math.min(data[i] * 1.1, 255);
-            data[i + 1] = data[i + 1] < 128 ? data[i + 1] * 0.9 : Math.min(data[i + 1] * 1.1, 255);
-            data[i + 2] = data[i + 2] < 128 ? data[i + 2] * 0.9 : Math.min(data[i + 2] * 1.1, 255);
-        }
-        
-        ctx.putImageData(imageData, 0, 0);
-        
-        // 获取处理后的图像数据
-        currentAIImage = canvas.toDataURL('image/jpeg');
-        
-        // 显示AI图像
-        imagePreview.innerHTML = `
-            <img src="${currentOriginalImage}" alt="原图" style="position:absolute; max-width:100%; max-height:100%; opacity:1;">
-            <img src="${currentAIImage}" alt="AI增强图像" class="ai-image" style="position:absolute; max-width:100%; max-height:100%; opacity:0;">
-        `;
-        
-        // 应用渐变效果
-        setTimeout(() => {
-            const aiImage = imagePreview.querySelector('.ai-image');
-            aiImage.style.transition = 'opacity 2s ease-in-out';
-            aiImage.style.opacity = '1';
-        }, 500);
-    };
+        // 触摸取消事件（手指移出按钮）
+        button.addEventListener('touchcancel', function(e) {
+            e.preventDefault();
+            this.style.transform = 'scale(1)';
+            this.style.opacity = '1';
+        });
+    });
 }
 
-// 重新生成AI图像
-regenerateImageBtn.addEventListener('click', () => {
-    if (currentOriginalImage) {
-        showNotification('AI图像重新生成中...');
-        generateAIImage(currentOriginalImage);
-    } else {
-        showNotification('请先上传原图', 'error');
+// 模态框控制功能
+function setupModal() {
+    const modal = document.getElementById('help-modal');
+    const helpBtn = document.getElementById('help-btn');
+    const closeBtn = document.querySelector('.close');
+    
+    if (helpBtn && modal && closeBtn) {
+        // 打开模态框
+        helpBtn.addEventListener('click', function() {
+            modal.style.display = 'block';
+            document.body.style.overflow = 'hidden';
+        });
+        
+        // 关闭模态框
+        closeBtn.addEventListener('click', function() {
+            modal.style.display = 'none';
+            document.body.style.overflow = 'auto';
+        });
+        
+        // 点击模态框背景关闭
+        modal.addEventListener('click', function(e) {
+            if (e.target === modal) {
+                modal.style.display = 'none';
+                document.body.style.overflow = 'auto';
+            }
+        });
+        
+        // ESC键关闭
+        document.addEventListener('keydown', function(e) {
+            if (e.key === 'Escape' && modal.style.display === 'block') {
+                modal.style.display = 'none';
+                document.body.style.overflow = 'auto';
+            }
+        });
     }
-});
+}
 
-// 生成视频
-generateVideoBtn.addEventListener('click', () => {
-    if (!currentOriginalImage || !currentAIImage) {
-        showNotification('请先上传原图并生成AI图像', 'error');
-        return;
+// 相机控制功能
+function setupCamera() {
+    if (startCameraBtn && cameraPreview) {
+        startCameraBtn.addEventListener('click', async function() {
+            // 检查是否在Netlify预览环境
+            if (window.location.hostname.includes('netlify.app')) {
+                showNotification('📱 相机功能需要在真实移动设备上运行。请用手机访问此页面。', 'info');
+                showQRCodeGuide();
+                return;
+            }
+            
+            // 检查是否支持相机
+            if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+                showNotification('您的浏览器不支持相机功能', 'error');
+                return;
+            }
+            
+            try {
+                const stream = await navigator.mediaDevices.getUserMedia({
+                    video: {
+                        facingMode: 'environment',
+                        width: { ideal: 1280 },
+                        height: { ideal: 720 }
+                    }
+                });
+                
+                cameraPreview.srcObject = stream;
+                startCameraBtn.textContent = '相机已开启';
+                startCameraBtn.disabled = true;
+                
+                // 隐藏引导提示
+                const guide = document.querySelector('.camera-guide');
+                if (guide) {
+                    guide.style.display = 'none';
+                }
+                
+            } catch (error) {
+                console.error('无法访问相机:', error);
+                handleCameraError(error);
+            }
+        });
+    }
+}
+
+// 处理相机错误
+function handleCameraError(error) {
+    let message = '无法访问相机';
+    
+    if (error.name === 'NotAllowedError') {
+        message = '相机权限被拒绝。请允许相机权限并刷新页面。';
+    } else if (error.name === 'NotFoundError') {
+        message = '未找到可用的相机设备';
+    } else if (error.name === 'NotReadableError') {
+        message = '相机设备正被其他程序使用';
+    } else if (error.name === 'OverconstrainedError') {
+        message = '无法满足相机配置要求';
+    } else if (error.name === 'SecurityError') {
+        message = '相机访问被浏览器安全策略阻止';
+    } else if (error.name === 'TypeError') {
+        message = '访问相机需要HTTPS协议';
     }
     
-    showNotification('视频生成中...');
+    showNotification(message, 'error');
+}
+
+// 设备检测和引导
+function checkDeviceAndEnvironment() {
+    const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+    const isNetlifyPreview = window.location.hostname.includes('netlify.app');
+    const isLocalhost = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
+    const isHTTPS = window.location.protocol === 'https:';
     
-    // 创建视频预览
-    videoPreview.innerHTML = `
-        <div style="position:relative; width:100%; height:100%; display:flex; justify-content:center; align-items:center;">
-            <img src="${currentOriginalImage}" alt="原图" style="position:absolute; max-width:90%; max-height:90%;" id="videoOriginalImage">
-            <img src="${currentAIImage}" alt="AI图像" style="position:absolute; max-width:90%; max-height:90%; opacity:0;" id="videoAIImage">
+    // 在Netlify预览环境显示提示
+    if (isNetlifyPreview) {
+        showNotification('📱 请用手机扫描二维码访问以获得完整功能', 'info');
+        showQRCodeGuide();
+    }
+    
+    // 非HTTPS环境提示
+    if (!isHTTPS && !isLocalhost) {
+        showNotification('⚠️ 相机功能需要HTTPS安全连接', 'error');
+    }
+    
+    return { isMobile, isNetlifyPreview, isHTTPS };
+}
+
+// 显示二维码引导
+function showQRCodeGuide() {
+    // 移除现有的引导
+    const existingGuide = document.querySelector('.qr-guide');
+    if (existingGuide) {
+        existingGuide.remove();
+    }
+    
+    const guide = document.createElement('div');
+    guide.className = 'qr-guide';
+    guide.innerHTML = `
+        <div style="text-align:center; padding:20px; background:rgba(0,0,0,0.8); border-radius:15px; margin:20px; color:white;">
+            <h3>📱 手机访问指南</h3>
+            <p>1. 用手机相机扫描下方二维码</p>
+            <p>2. 在手机浏览器中打开</p>
+            <p>3. 允许相机权限</p>
+            <div id="qrcode" style="margin:15px auto; width:150px; height:150px; background:#fff; padding:10px; border-radius:10px;"></div>
+            <p>或直接访问:<br><small>${window.location.href}</small></p>
         </div>
-        <p>从原图到AI图像的渐变过程</p>
     `;
     
-    // 开始渐变效果
-    setTimeout(() => {
-        const videoAIImage = document.getElementById('videoAIImage');
-        videoAIImage.style.transition = 'opacity 3s ease-in-out';
-        videoAIImage.style.opacity = '1';
-    }, 500);
-});
+    const main = document.querySelector('main');
+    if (main) {
+        main.appendChild(guide);
+    }
+    
+    // 简单模拟二维码
+    const qrCode = document.getElementById('qrcode');
+    if (qrCode) {
+        qrCode.innerHTML = `
+            <div style="width:100%; height:100%; display:flex; align-items:center; justify-content:center; font-size:40px; background:#fff;">
+                📷
+            </div>
+        `;
+    }
+}
 
-// 重新生成视频
-regenerateVideoBtn.addEventListener('click', () => {
-    if (!currentOriginalImage || !currentAIImage) {
-        showNotification('请先上传原图并生成AI图像', 'error');
-        return;
-    }
-    
-    showNotification('视频重新生成中...');
-    generateVideoBtn.click();
-});
-
-// 保存项目
-saveProjectBtn.addEventListener('click', async () => {
-    const projectName = document.getElementById('projectName').value;
-    if (!projectName) {
-        showNotification('请输入项目名称', 'error');
-        return;
-    }
-    
-    if (!currentOriginalImage || !currentAIImage) {
-        showNotification('请先上传原图并生成AI图像和视频', 'error');
-        return;
-    }
-    
-    const newProject = {
-        id: Date.now(),
-        name: projectName,
-        originalImage: currentOriginalImage,
-        aiImage: currentAIImage,
-        createdAt: new Date().toLocaleDateString('zh-CN'),
-        status: '已发布'
-    };
-    
-    try {
-        // 尝试保存到API
-        const success = await saveProjectToAPI(newProject);
-        if (!success) {
-            // API失败时保存到本地存储
-            projects.push(newProject);
-            localStorage.setItem('arProjects', JSON.stringify(projects));
-        }
-        
-        showNotification('项目保存成功！');
-        createProjectModal.style.display = 'none';
-        renderProjects();
-    } catch (error) {
-        // 保存到本地存储
-        projects.push(newProject);
-        localStorage.setItem('arProjects', JSON.stringify(projects));
-        showNotification('项目保存成功！（本地模式）');
-        createProjectModal.style.display = 'none';
-        renderProjects();
-    }
-});
-
-// 保存项目到API
-async function saveProjectToAPI(project) {
-    try {
-        const token = localStorage.getItem('authToken');
-        const response = await fetch(`${API_BASE_URL}/api/projects`, {
-            method: 'POST',
-            headers: {
-                'Authorization': `Bearer ${token}`,
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify(project)
-        });
-        
-        return response.ok;
-    } catch (error) {
-        console.error('保存项目到API错误:', error);
-        return false;
-    }
+// 创建新项目功能
+if (createProjectBtn) {
+    createProjectBtn.addEventListener('click', function() {
+        showNotification('创建项目功能需要后端支持', 'info');
+    });
 }
 
 // 渲染项目列表
 function renderProjects() {
-    projectsGrid.innerHTML = '';
+    if (!projectsContainer) return;
+    
+    projectsContainer.innerHTML = '';
     
     if (projects.length === 0) {
-        projectsGrid.innerHTML = '<p>暂无项目，请创建新项目</p>';
+        projectsContainer.innerHTML = `
+            <div class="project-card">
+                <h3>暂无项目</h3>
+                <p>请创建您的第一个AR项目</p>
+            </div>
+        `;
         return;
     }
     
@@ -403,86 +252,235 @@ function renderProjects() {
         projectCard.innerHTML = `
             <h3>${project.name}</h3>
             <div class="project-image">
-                <img src="${project.originalImage}" alt="${project.name}" style="max-width:100%; max-height:100%;">
+                <img src="${project.originalImage}" alt="${project.name}" style="max-width:100%; border-radius:8px;">
             </div>
-            <p>创建于: ${project.createdAt}</p>
-            <p>状态: ${project.status}</p>
+            <p>创建时间: ${project.createdAt}</p>
+            <p>状态: <span class="status">${project.status}</span></p>
             <div class="project-actions">
-                <button class="btn btn-secondary" onclick="editProject(${project.id})">
-                    <i class="fas fa-edit"></i> 编辑
-                </button>
-                <button class="btn btn-primary" onclick="viewProject(${project.id})">
-                    <i class="fas fa-eye"></i> 查看
+                <button class="view-btn" onclick="viewProject(${project.id})">
+                    👁️ 查看项目
                 </button>
             </div>
         `;
-        projectsGrid.appendChild(projectCard);
+        projectsContainer.appendChild(projectCard);
     });
 }
 
-// 编辑项目
-window.editProject = function(id) {
-    const project = projects.find(p => p.id === id);
-    if (project) {
-        showNotification(`编辑项目 #${id}（实际部署时会打开编辑界面）`);
-    }
-};
-
-// 查看项目
+// 查看项目详情
 window.viewProject = function(id) {
     const project = projects.find(p => p.id === id);
     if (project) {
         // 创建查看模态框
         const viewModal = document.createElement('div');
         viewModal.className = 'modal';
-        viewModal.style.display = 'flex';
+        viewModal.style.display = 'block';
         viewModal.innerHTML = `
-            <div class="modal-content">
-                <div class="modal-header">
-                    <h2>${project.name}</h2>
-                    <span class="close-modal">&times;</span>
-                </div>
-                <div style="text-align:center;">
+            <div class="modal-content" style="max-width:90%; max-height:90vh; overflow-y:auto;">
+                <span class="close">&times;</span>
+                <h2>${project.name}</h2>
+                <div style="text-align:center; margin:20px 0;">
                     <h3>原图</h3>
-                    <img src="${project.originalImage}" alt="原图" style="max-width:100%; max-height:300px; margin-bottom:20px;">
+                    <img src="${project.originalImage}" alt="原图" style="max-width:100%; max-height:300px; border-radius:10px; margin-bottom:20px;">
                     <h3>AI增强图像</h3>
-                    <img src="${project.aiImage}" alt="AI增强图像" style="max-width:100%; max-height:300px;">
+                    <img src="${project.aiImage}" alt="AI增强图像" style="max-width:100%; max-height:300px; border-radius:10px;">
                 </div>
-                <div style="margin-top:20px; text-align:center;">
-                    <button class="btn btn-primary" onclick="this.closest('.modal').style.display='none'">
-                        <i class="fas fa-times"></i> 关闭
+                <div style="text-align:center; margin-top:20px;">
+                    <button class="close-btn" onclick="this.closest('.modal').style.display='none'" style="padding:10px 20px; background:#ff6b6b; color:white; border:none; border-radius:25px; cursor:pointer;">
+                        关闭
                     </button>
                 </div>
             </div>
         `;
         
         document.body.appendChild(viewModal);
+        document.body.style.overflow = 'hidden';
         
         // 添加关闭事件
-        viewModal.querySelector('.close-modal').addEventListener('click', () => {
-            viewModal.style.display = 'none';
-            document.body.removeChild(viewModal);
-        });
+        const closeBtn = viewModal.querySelector('.close');
+        if (closeBtn) {
+            closeBtn.addEventListener('click', () => {
+                viewModal.style.display = 'none';
+                document.body.removeChild(viewModal);
+                document.body.style.overflow = 'auto';
+            });
+        }
         
         viewModal.addEventListener('click', (e) => {
             if (e.target === viewModal) {
                 viewModal.style.display = 'none';
                 document.body.removeChild(viewModal);
+                document.body.style.overflow = 'auto';
             }
         });
     }
 };
 
+// 显示通知
+function showNotification(message, type = 'success') {
+    // 移除现有的通知
+    const existingNotification = document.querySelector('.notification');
+    if (existingNotification) {
+        existingNotification.remove();
+    }
+    
+    const notification = document.createElement('div');
+    notification.className = `notification ${type}`;
+    notification.innerHTML = `
+        <span>${message}</span>
+        <button onclick="this.parentElement.remove()" style="background:none; border:none; color:inherit; cursor:pointer; margin-left:10px;">×</button>
+    `;
+    
+    // 添加样式
+    notification.style.cssText = `
+        position: fixed;
+        top: 20px;
+        right: 20px;
+        padding: 15px 20px;
+        border-radius: 8px;
+        color: white;
+        font-weight: 500;
+        z-index: 10000;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        min-width: 250px;
+        max-width: 350px;
+        animation: slideIn 0.3s ease;
+        box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+    `;
+    
+    if (type === 'success') {
+        notification.style.background = 'linear-gradient(45deg, #4ecdc4, #44a08d)';
+    } else if (type === 'error') {
+        notification.style.background = 'linear-gradient(45deg, #ff6b6b, #ee5a24)';
+    } else if (type === 'info') {
+        notification.style.background = 'linear-gradient(45deg, #4e54c8, #8f94fb)';
+    }
+    
+    document.body.appendChild(notification);
+    
+    // 自动消失
+    setTimeout(() => {
+        if (notification.parentElement) {
+            notification.remove();
+        }
+    }, 4000);
+}
+
+// 添加CSS动画
+const style = document.createElement('style');
+style.textContent = `
+    @keyframes slideIn {
+        from {
+            transform: translateX(100%);
+            opacity: 0;
+        }
+        to {
+            transform: translateX(0);
+            opacity: 1;
+        }
+    }
+    
+    .notification {
+        animation: slideIn 0.3s ease;
+    }
+    
+    .status {
+        padding: 4px 8px;
+        border-radius: 12px;
+        font-size: 12px;
+        font-weight: bold;
+        background: rgba(255,255,255,0.2);
+    }
+    
+    .view-btn {
+        background: linear-gradient(45deg, #4ecdc4, #44a08d);
+        color: white;
+        border: none;
+        padding: 8px 16px;
+        border-radius: 20px;
+        cursor: pointer;
+        font-size: 14px;
+        transition: all 0.3s ease;
+    }
+    
+    .view-btn:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+    }
+    
+    .close-btn {
+        background: linear-gradient(45deg, #ff6b6b, #ee5a24);
+        color: white;
+        border: none;
+        padding: 12px 24px;
+        border-radius: 25px;
+        cursor: pointer;
+        font-weight: 600;
+        transition: all 0.3s ease;
+    }
+    
+    .close-btn:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+    }
+    
+    /* 相机引导提示 */
+    .camera-guide {
+        text-align: center;
+        padding: 20px;
+        background: rgba(255, 255, 255, 0.1);
+        border-radius: 15px;
+        margin: 15px 0;
+        backdrop-filter: blur(10px);
+    }
+
+    .guide-icon {
+        font-size: 3rem;
+        margin-bottom: 10px;
+    }
+
+    .guide-text {
+        font-size: 1.2rem;
+        font-weight: 600;
+        margin-bottom: 5px;
+    }
+
+    .guide-subtext {
+        font-size: 0.9rem;
+        opacity: 0.8;
+    }
+
+    /* 二维码引导 */
+    .qr-guide {
+        margin: 20px auto;
+        max-width: 400px;
+    }
+
+    /* 移动端隐藏引导 */
+    @media (max-width: 768px) {
+        .camera-guide {
+            display: none;
+        }
+    }
+`;
+document.head.appendChild(style);
+
 // 全局错误处理
-window.addEventListener('error', (e) => {
+window.addEventListener('error', function(e) {
     console.error('全局错误:', e.error);
+    showNotification('发生了一些错误，请刷新页面重试', 'error');
 });
 
 // 离线检测
-window.addEventListener('online', () => {
+window.addEventListener('online', function() {
     showNotification('网络连接已恢复');
 });
 
-window.addEventListener('offline', () => {
+window.addEventListener('offline', function() {
     showNotification('网络连接已断开，使用本地模式', 'error');
 });
+
+// 导出函数供全局使用
+window.showNotification = showNotification;
+window.viewProject = viewProject;
