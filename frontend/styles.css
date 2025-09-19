@@ -1,381 +1,346 @@
-* {
-    margin: 0;
-    padding: 0;
-    box-sizing: border-box;
-    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-    -webkit-tap-highlight-color: transparent; /* 移除移动端点击高亮 */
-}
+// API基础URL - 部署后需要更新为Railway后端地址
+const API_BASE_URL = window.location.hostname === 'localhost' ? 
+    'http://localhost:5000' : 
+    'https://your-backend.up.railway.app';
 
-body {
-    background: linear-gradient(135deg, #1a2a6c, #b21f1f, #fdbb2d);
-    min-height: 100vh;
-    color: #fff;
-    display: flex;
-    flex-direction: column;
-    overflow-x: hidden; /* 防止水平滚动 */
-}
+// 模拟数据存储（在没有后端时使用）
+let projects = JSON.parse(localStorage.getItem('arProjects')) || [];
+let currentOriginalImage = null;
+let currentAIImage = null;
 
-/* 头部样式 */
-header {
-    background-color: rgba(0, 0, 0, 0.7);
-    padding: 1rem;
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    box-shadow: 0 2px 20px rgba(0, 0, 0, 0.3);
-    backdrop-filter: blur(10px);
-    position: relative;
-    z-index: 100;
-}
+// DOM元素
+const startCameraBtn = document.getElementById('start-camera');
+const createProjectBtn = document.getElementById('create-project');
+const helpBtn = document.getElementById('help-btn');
+const cameraPreview = document.getElementById('camera-preview');
+const projectsContainer = document.getElementById('projects-container');
 
-.logo {
-    font-size: 1.5rem;
-    font-weight: bold;
-    color: #fff;
-}
-
-/* 导航按钮 */
-nav {
-    display: flex;
-    gap: 1rem;
-}
-
-#help-btn {
-    background: linear-gradient(45deg, #4ecdc4, #44a08d);
-    color: white;
-    border: none;
-    padding: 10px 20px;
-    border-radius: 50px;
-    font-size: 1rem;
-    font-weight: 600;
-    cursor: pointer;
-    transition: all 0.3s ease;
-    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
-}
-
-#help-btn:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 6px 20px rgba(0, 0, 0, 0.3);
-}
-
-/* 主内容区域 */
-main {
-    flex: 1;
-    padding: 2rem;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    text-align: center;
-}
-
-/* 相机容器 */
-.camera-container {
-    width: 100%;
-    max-width: 500px;
-    margin: 2rem auto;
-    background: rgba(255, 255, 255, 0.1);
-    border-radius: 20px;
-    padding: 2rem;
-    backdrop-filter: blur(10px);
-    border: 1px solid rgba(255, 255, 255, 0.2);
-}
-
-#camera-preview {
-    width: 100%;
-    height: 300px;
-    background: #000;
-    border-radius: 15px;
-    margin-bottom: 1.5rem;
-    object-fit: cover;
-}
-
-/* 按钮样式 */
-.button-container {
-    display: flex;
-    gap: 1rem;
-    justify-content: center;
-    flex-wrap: wrap;
-}
-
-button:not(#help-btn) {
-    background: linear-gradient(45deg, #ff6b6b, #ee5a24);
-    color: white;
-    border: none;
-    padding: 15px 30px;
-    border-radius: 50px;
-    font-size: 1.1rem;
-    font-weight: 600;
-    cursor: pointer;
-    transition: all 0.3s ease;
-    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
-    min-width: 140px;
-}
-
-button:not(#help-btn):hover {
-    transform: translateY(-2px);
-    box-shadow: 0 6px 20px rgba(0, 0, 0, 0.3);
-}
-
-button:not(#help-btn):active {
-    transform: translateY(0);
-}
-
-/* 项目网格 */
-.projects-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
-    gap: 1.5rem;
-    width: 100%;
-    max-width: 1200px;
-    margin: 2rem auto;
-}
-
-.project-card {
-    background: rgba(255, 255, 255, 0.1);
-    padding: 1.5rem;
-    border-radius: 15px;
-    backdrop-filter: blur(10px);
-    border: 1px solid rgba(255, 255, 255, 0.2);
-    transition: transform 0.3s ease;
-}
-
-.project-card:hover {
-    transform: translateY(-5px);
-}
-
-/* 模态框样式 */
-.modal {
-    display: none;
-    position: fixed;
-    z-index: 1000;
-    left: 0;
-    top: 0;
-    width: 100%;
-    height: 100%;
-    background-color: rgba(0, 0, 0, 0.8);
-    backdrop-filter: blur(5px);
-    animation: fadeIn 0.3s ease;
-}
-
-.modal-content {
-    background: linear-gradient(135deg, #2c3e50, #4ca1af);
-    margin: 15% auto;
-    padding: 2rem;
-    border-radius: 20px;
-    width: 90%;
-    max-width: 500px;
-    position: relative;
-    animation: slideIn 0.3s ease;
-    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
-}
-
-.close {
-    color: #fff;
-    float: right;
-    font-size: 28px;
-    font-weight: bold;
-    cursor: pointer;
-    transition: color 0.3s ease;
-    position: absolute;
-    top: 15px;
-    right: 20px;
-}
-
-.close:hover {
-    color: #ff6b6b;
-}
-
-.modal-content h3 {
-    margin-bottom: 1.5rem;
-    color: #fff;
-    font-size: 1.5rem;
-}
-
-.modal-content p {
-    margin: 0.8rem 0;
-    line-height: 1.6;
-    color: #ecf0f1;
-}
-
-/* 动画 */
-@keyframes fadeIn {
-    from { opacity: 0; }
-    to { opacity: 1; }
-}
-
-@keyframes slideIn {
-    from {
-        opacity: 0;
-        transform: translateY(-50px);
+// 初始化
+document.addEventListener('DOMContentLoaded', function() {
+    setupMobileControls();
+    setupModal();
+    setupCamera();
+    renderProjects();
+    
+    // 检测移动设备
+    if ('ontouchstart' in window || navigator.maxTouchPoints > 0) {
+        document.body.classList.add('is-mobile');
     }
-    to {
-        opacity: 1;
-        transform: translateY(0);
+});
+
+// 添加触摸事件支持
+function setupMobileControls() {
+    const buttons = document.querySelectorAll('button');
+    
+    buttons.forEach(button => {
+        // 防止移动端触摸时出现蓝色高亮
+        button.style.webkitTapHighlightColor = 'transparent';
+        
+        // 触摸开始事件
+        button.addEventListener('touchstart', function(e) {
+            e.preventDefault();
+            this.style.transform = 'scale(0.95)';
+            this.style.opacity = '0.8';
+        });
+        
+        // 触摸结束事件
+        button.addEventListener('touchend', function(e) {
+            e.preventDefault();
+            this.style.transform = 'scale(1)';
+            this.style.opacity = '1';
+            
+            // 模拟点击事件
+            this.click();
+        });
+        
+        // 触摸取消事件（手指移出按钮）
+        button.addEventListener('touchcancel', function(e) {
+            e.preventDefault();
+            this.style.transform = 'scale(1)';
+            this.style.opacity = '1';
+        });
+    });
+}
+
+// 模态框控制功能
+function setupModal() {
+    const modal = document.getElementById('help-modal');
+    const helpBtn = document.getElementById('help-btn');
+    const closeBtn = document.querySelector('.close');
+    
+    if (helpBtn && modal && closeBtn) {
+        // 打开模态框
+        helpBtn.addEventListener('click', function() {
+            modal.style.display = 'block';
+            document.body.style.overflow = 'hidden';
+        });
+        
+        // 关闭模态框
+        closeBtn.addEventListener('click', function() {
+            modal.style.display = 'none';
+            document.body.style.overflow = 'auto';
+        });
+        
+        // 点击模态框背景关闭
+        modal.addEventListener('click', function(e) {
+            if (e.target === modal) {
+                modal.style.display = 'none';
+                document.body.style.overflow = 'auto';
+            }
+        });
+        
+        // ESC键关闭
+        document.addEventListener('keydown', function(e) {
+            if (e.key === 'Escape' && modal.style.display === 'block') {
+                modal.style.display = 'none';
+                document.body.style.overflow = 'auto';
+            }
+        });
     }
 }
 
-/* 移动端响应式设计 */
-@media (max-width: 768px) {
-    header {
-        padding: 0.8rem;
-        flex-direction: column;
-        gap: 0.5rem;
+// 相机控制功能
+function setupCamera() {
+    if (startCameraBtn && cameraPreview) {
+        startCameraBtn.addEventListener('click', async function() {
+            try {
+                const stream = await navigator.mediaDevices.getUserMedia({
+                    video: {
+                        facingMode: 'environment',
+                        width: { ideal: 1280 },
+                        height: { ideal: 720 }
+                    }
+                });
+                
+                cameraPreview.srcObject = stream;
+                startCameraBtn.textContent = '相机已开启';
+                startCameraBtn.disabled = true;
+                
+            } catch (error) {
+                console.error('无法访问相机:', error);
+                showNotification('无法访问相机。请确保已授予相机权限。', 'error');
+            }
+        });
+    }
+}
+
+// 创建新项目功能
+if (createProjectBtn) {
+    createProjectBtn.addEventListener('click', function() {
+        showNotification('创建项目功能需要后端支持', 'info');
+        // 这里可以打开创建项目的模态框
+    });
+}
+
+// 渲染项目列表
+function renderProjects() {
+    if (!projectsContainer) return;
+    
+    projectsContainer.innerHTML = '';
+    
+    if (projects.length === 0) {
+        projectsContainer.innerHTML = `
+            <div class="project-card">
+                <h3>暂无项目</h3>
+                <p>请创建您的第一个AR项目</p>
+            </div>
+        `;
+        return;
     }
     
-    .logo {
-        font-size: 1.2rem;
+    projects.forEach(project => {
+        const projectCard = document.createElement('div');
+        projectCard.className = 'project-card';
+        projectCard.innerHTML = `
+            <h3>${project.name}</h3>
+            <div class="project-image">
+                <img src="${project.originalImage}" alt="${project.name}" style="max-width:100%; border-radius:8px;">
+            </div>
+            <p>创建时间: ${project.createdAt}</p>
+            <p>状态: <span class="status">${project.status}</span></p>
+            <div class="project-actions">
+                <button class="view-btn" onclick="viewProject(${project.id})">
+                    👁️ 查看项目
+                </button>
+            </div>
+        `;
+        projectsContainer.appendChild(projectCard);
+    });
+}
+
+// 查看项目详情
+window.viewProject = function(id) {
+    const project = projects.find(p => p.id === id);
+    if (project) {
+        // 创建查看模态框
+        const viewModal = document.createElement('div');
+        viewModal.className = 'modal';
+        viewModal.style.display = 'block';
+        viewModal.innerHTML = `
+            <div class="modal-content" style="max-width:90%; max-height:90vh; overflow-y:auto;">
+                <span class="close">&times;</span>
+                <h2>${project.name}</h2>
+                <div style="text-align:center; margin:20px 0;">
+                    <h3>原图</h3>
+                    <img src="${project.originalImage}" alt="原图" style="max-width:100%; max-height:300px; border-radius:10px; margin-bottom:20px;">
+                    <h3>AI增强图像</h3>
+                    <img src="${project.aiImage}" alt="AI增强图像" style="max-width:100%; max-height:300px; border-radius:10px;">
+                </div>
+                <div style="text-align:center; margin-top:20px;">
+                    <button class="close-btn" onclick="this.closest('.modal').style.display='none'" style="padding:10px 20px; background:#ff6b6b; color:white; border:none; border-radius:25px; cursor:pointer;">
+                        关闭
+                    </button>
+                </div>
+            </div>
+        `;
+        
+        document.body.appendChild(viewModal);
+        document.body.style.overflow = 'hidden';
+        
+        // 添加关闭事件
+        const closeBtn = viewModal.querySelector('.close');
+        closeBtn.addEventListener('click', () => {
+            viewModal.style.display = 'none';
+            document.body.removeChild(viewModal);
+            document.body.style.overflow = 'auto';
+        });
+        
+        viewModal.addEventListener('click', (e) => {
+            if (e.target === viewModal) {
+                viewModal.style.display = 'none';
+                document.body.removeChild(viewModal);
+                document.body.style.overflow = 'auto';
+            }
+        });
+    }
+};
+
+// 显示通知
+function showNotification(message, type = 'success') {
+    // 移除现有的通知
+    const existingNotification = document.querySelector('.notification');
+    if (existingNotification) {
+        existingNotification.remove();
     }
     
-    nav {
-        gap: 0.5rem;
+    const notification = document.createElement('div');
+    notification.className = `notification ${type}`;
+    notification.innerHTML = `
+        <span>${message}</span>
+        <button onclick="this.parentElement.remove()" style="background:none; border:none; color:inherit; cursor:pointer; margin-left:10px;">×</button>
+    `;
+    
+    // 添加样式
+    notification.style.cssText = `
+        position: fixed;
+        top: 20px;
+        right: 20px;
+        padding: 15px 20px;
+        border-radius: 8px;
+        color: white;
+        font-weight: 500;
+        z-index: 10000;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        min-width: 250px;
+        max-width: 350px;
+        animation: slideIn 0.3s ease;
+        box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+    `;
+    
+    if (type === 'success') {
+        notification.style.background = 'linear-gradient(45deg, #4ecdc4, #44a08d)';
+    } else if (type === 'error') {
+        notification.style.background = 'linear-gradient(45deg, #ff6b6b, #ee5a24)';
+    } else if (type === 'info') {
+        notification.style.background = 'linear-gradient(45deg, #4e54c8, #8f94fb)';
     }
     
-    #help-btn {
+    document.body.appendChild(notification);
+    
+    // 自动消失
+    setTimeout(() => {
+        if (notification.parentElement) {
+            notification.remove();
+        }
+    }, 4000);
+}
+
+// 添加CSS动画
+const style = document.createElement('style');
+style.textContent = `
+    @keyframes slideIn {
+        from {
+            transform: translateX(100%);
+            opacity: 0;
+        }
+        to {
+            transform: translateX(0);
+            opacity: 1;
+        }
+    }
+    
+    .notification {
+        animation: slideIn 0.3s ease;
+    }
+    
+    .status {
+        padding: 4px 8px;
+        border-radius: 12px;
+        font-size: 12px;
+        font-weight: bold;
+    }
+    
+    .view-btn {
+        background: linear-gradient(45deg, #4ecdc4, #44a08d);
+        color: white;
+        border: none;
         padding: 8px 16px;
-        font-size: 0.9rem;
-    }
-    
-    main {
-        padding: 1rem;
-    }
-    
-    .camera-container {
-        margin: 1rem auto;
-        padding: 1.5rem;
-    }
-    
-    #camera-preview {
-        height: 250px;
-    }
-    
-    .button-container {
-        flex-direction: column;
-        gap: 0.8rem;
-    }
-    
-    button:not(#help-btn) {
-        width: 100%;
-        padding: 12px 20px;
-        font-size: 1rem;
-    }
-    
-    .projects-grid {
-        grid-template-columns: 1fr;
-        gap: 1rem;
-    }
-    
-    .modal-content {
-        margin: 20% auto;
-        padding: 1.5rem;
-    }
-    
-    .modal-content h3 {
-        font-size: 1.3rem;
-    }
-}
-
-@media (max-width: 480px) {
-    body {
+        border-radius: 20px;
+        cursor: pointer;
         font-size: 14px;
+        transition: all 0.3s ease;
     }
     
-    .camera-container {
-        padding: 1rem;
+    .view-btn:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 12px rgba(0,0,0,0.2);
     }
     
-    #camera-preview {
-        height: 200px;
+    .close-btn {
+        background: linear-gradient(45deg, #ff6b6b, #ee5a24);
+        color: white;
+        border: none;
+        padding: 12px 24px;
+        border-radius: 25px;
+        cursor: pointer;
+        font-weight: 600;
+        transition: all 0.3s ease;
     }
     
-    button:not(#help-btn) {
-        padding: 10px 16px;
-        font-size: 0.9rem;
+    .close-btn:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 12px rgba(0,0,0,0.3);
     }
-    
-    .modal-content {
-        margin: 25% auto;
-        padding: 1.2rem;
-    }
-    
-    .close {
-        top: 10px;
-        right: 15px;
-        font-size: 24px;
-    }
-    
-    /* 防止手机缩放 */
-    input, select, textarea {
-        font-size: 16px !important;
-    }
-}
+`;
+document.head.appendChild(style);
 
-/* 加载动画 */
-.loading {
-    display: inline-block;
-    width: 20px;
-    height: 20px;
-    border: 3px solid rgba(255,255,255,.3);
-    border-radius: 50%;
-    border-top-color: #fff;
-    animation: spin 1s ease-in-out infinite;
-}
+// 全局错误处理
+window.addEventListener('error', function(e) {
+    console.error('全局错误:', e.error);
+    showNotification('发生了一些错误，请刷新页面重试', 'error');
+});
 
-@keyframes spin {
-    to { transform: rotate(360deg); }
-}
+// 离线检测
+window.addEventListener('online', function() {
+    showNotification('网络连接已恢复');
+});
 
-/* 滚动条样式 */
-::-webkit-scrollbar {
-    width: 8px;
-}
+window.addEventListener('offline', function() {
+    showNotification('网络连接已断开，使用本地模式', 'error');
+});
 
-::-webkit-scrollbar-track {
-    background: rgba(255, 255, 255, 0.1);
-}
-
-::-webkit-scrollbar-thumb {
-    background: rgba(255, 255, 255, 0.3);
-    border-radius: 4px;
-}
-
-::-webkit-scrollbar-thumb:hover {
-    background: rgba(255, 255, 255, 0.5);
-}
-
-/* 移动设备特定样式 */
-.is-mobile {
-    /* 移动设备特定样式 */
-}
-
-/* 防止长按弹出菜单 */
-button, a {
-    -webkit-touch-callout: none;
-    -webkit-user-select: none;
-    user-select: none;
-}
-
-/* 改善移动端滚动体验 */
-html {
-    scroll-behavior: smooth;
-    -webkit-overflow-scrolling: touch;
-}
-
-/* 防止iOS缩放 */
-input, select, textarea {
-    font-size: 16px !important;
-    transform: scale(1);
-}
-
-/* 移动端状态栏颜色 */
-@media (max-width: 768px) {
-    body {
-        padding-top: env(safe-area-inset-top);
-        padding-bottom: env(safe-area-inset-bottom);
-    }
-    
-    /* iPhone X+ 安全区域 */
-    header {
-        padding-top: calc(1rem + env(safe-area-inset-top));
-    }
-}
+// 导出函数供全局使用
+window.showNotification = showNotification;
+window.viewProject = viewProject;
