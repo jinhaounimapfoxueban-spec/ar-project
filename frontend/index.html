@@ -1,22 +1,50 @@
-* {
-    margin: 0;
-    padding: 0;
-    box-sizing: border-box;
-    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-}
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <meta http-equiv="Permissions-Policy" content="camera=(self)">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="theme-color" content="#1a2a6c">
+    <title>马佛青AR项目</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <header>
+        <div class="logo">马佛青AR项目</div>
+        <nav>
+            <button id="help-btn">使用说明</button>
+        </nav>
+    </header>
 
-body {
-    background: linear-gradient(135deg, #1a2a6c, #b21f1f, #fdbb2d);
-    min-height: 100vh;
-    color: #fff;
-    display: flex;
-    flex-direction: column;
-}
+    <main>
+        <div class="camera-container">
+            <video id="camera-preview" autoplay playsinline></video>
+            <div class="button-container">
+                <button id="start-camera">开启相机</button>
+                <button id="create-project">创建新项目</button>
+            </div>
+        </div>
 
-header {
-    background-color: rgba(0, 0, 0, 0.7);
-    padding: 1rem 2rem;
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    box-shadow
+        <h2>项目管理面板</h2>
+        <div class="projects-grid" id="projects-container">
+            <!-- 项目卡片会通过JavaScript动态添加 -->
+        </div>
+    </main>
+
+    <!-- 使用说明模态框 -->
+    <div id="help-modal" class="modal">
+        <div class="modal-content">
+            <span class="close">&times;</span>
+            <h3>使用说明</h3>
+            <p>1. 点击"开启相机"授权相机权限</p>
+            <p>2. 将相机对准AR标记进行识别</p>
+            <p>3. 点击"创建新项目"添加AR内容</p>
+            <p>4. 在项目管理面板查看所有项目</p>
+        </div>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+</html>
