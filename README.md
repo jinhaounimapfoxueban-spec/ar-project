@@ -1,3 +1,4 @@
+markdown
 # AR项目管理系统
 
 马佛青文化委员会AR项目管理系统
@@ -34,7 +35,27 @@
 
 ### 安装和运行
 
-1. 克隆仓库
+1. **克隆仓库**
 ```bash
 git clone <repository-url>
 cd ar-project
+安装后端依赖
+
+bash
+cd backend
+npm install
+配置环境变量
+
+bash
+# 复制环境变量示例文件
+cp .env.example .env
+
+# 编辑 .env 文件
+MONGODB_URI=你的MongoDB连接字符串
+JWT_SECRET=你的JWT密钥
+PORT=3000
+NODE_ENV=development
+启动开发服务器
+
+bash
+npm run dev
