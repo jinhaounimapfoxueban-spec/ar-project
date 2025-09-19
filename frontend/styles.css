@@ -344,3 +344,48 @@ window.addEventListener('offline', function() {
 // 导出函数供全局使用
 window.showNotification = showNotification;
 window.viewProject = viewProject;
+
+    /* 相机引导提示 */
+.camera-guide {
+    text-align: center;
+    padding: 20px;
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: 15px;
+    margin: 15px 0;
+    backdrop-filter: blur(10px);
+}
+
+.guide-icon {
+    font-size: 3rem;
+    margin-bottom: 10px;
+}
+
+.guide-text {
+    font-size: 1.2rem;
+    font-weight: 600;
+    margin-bottom: 5px;
+}
+
+.guide-subtext {
+    font-size: 0.9rem;
+    opacity: 0.8;
+}
+
+/* 二维码引导 */
+.qr-guide {
+    margin: 20px auto;
+    max-width: 400px;
+}
+
+/* 移动端隐藏引导 */
+@media (max-width: 768px) {
+    .camera-guide {
+        display: none;
+    }
+}
+
+/* 通知样式优化 */
+.notification {
+    font-size: 14px;
+    line-height: 1.4;
+}
